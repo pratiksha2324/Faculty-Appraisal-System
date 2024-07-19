@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+thead {
+    background-color: #f8f8f8;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+   
+
+    <table>
+        <thead>
+            <tr>
+                <th>Email ID</th>
+                <th>SR No</th>
+                <th>Parameter</th>
+                <th>Maximum Scores</th>
+                <th>Self Approved Scores</th>
+                <th>Supportive Document</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% data.forEach(row => { %>
+                <tr>
+                    <td><%= row.email_id %></td>
+                    <td><%= row.sr_no %></td>
+                    <td><%= row.Parameter %></td>
+                    <td><%= row.Maximum_Scores %></td>
+                    <td><%= row.Self_Approved_Scores %></td>
+                    <td>
+                        <% if (row.supportive_doc && row.supportive_doc.length > 0) { %>
+                            <% row.supportive_doc.forEach(doc => { %>
+                                <a href="/<%= doc %>" target="_blank">View Document</a><br>
+                            <% }) %>
+                        <% } else { %>
+                            No Document
+                        <% } %>
+                    </td>
+                </tr>
+            <% }) %>
+            <tr>
+                <td colspan="3" align="RIGHT">Total</td>
+                <td><%= totalMaximumScores %></td>
+                <td><%= totalSelfApprovedScores %></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<%- include('nav') %>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Table</title>
+    <style>
+         
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #2e2c2c;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+        }
+        
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .search-container input[type="text"] {
+            padding: 10px;
+            width: 300px;
+            font-size: 16px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #fff;
+        }
+        
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+        
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #000080;
+            /* Dark blue */
+            color: white;
+        }
+        
+        .btn {
+            padding: 5px 10px;
+            margin: 2px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .view-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .approve-btn {
+            background-color: #008CBA;
+            color: white;
+        }
+        
+        .pending-btn {
+            background-color: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Employee Directory</h1>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search by department name...">
+    </div>
+
+    <table id="employeeTable">
+        <thead>
+            <tr>
+                <th>EmpID</th>
+                <th>EmpName</th>
+                <th>Department</th>
+                <th>Report</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>John Doe</td>
+                <td>Finance</td>
+                <td><button class="btn view-btn" onclick="viewReport(1)">View</button></td>
+                <td>
+                    <button class="btn approve-btn">Approve</button>
+                    <button class="btn pending-btn">Pending</button>
+                </td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Jane Smith</td>
+                <td>Marketing</td>
+                <td><button class="btn view-btn" onclick="viewReport(2)">View</button></td>
+                <td>
+                    <button class="btn approve-btn">Approve</button>
+                    <button class="btn pending-btn">Pending</button>
+                </td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Mike Johnson</td>
+                <td>Finance</td>
+                <td><button class="btn view-btn" onclick="viewReport(3)">View</button></td>
+                <td>
+                    <button class="btn approve-btn">Approve</button>
+                    <button class="btn pending-btn">Pending</button>
+                </td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Emily Davis</td>
+                <td>IT</td>
+                <td><button class="btn view-btn" onclick="viewReport(4)">View</button></td>
+                <td>
+                    <button class="btn approve-btn">Approve</button>
+                    <button class="btn pending-btn">Pending</button>
+                </td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>David Wilson</td>
+                <td>HR</td>
+                <td><button class="btn view-btn" onclick="viewReport(5)">View</button></td>
+                <td>
+                    <button class="btn approve-btn">Approve</button>
+                    <button class="btn pending-btn">Pending</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        function viewReport(empId) {
+            window.location.href = 'ParameterByCummunity2.html?empId=' + empId;
+        }
+
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const filter = this.value.toUpperCase();
+            const table = document.getElementById('employeeTable');
+            const tr = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < tr.length; i++) {
+                const td = tr[i].getElementsByTagName('td')[2]; // Department column
+                if (td) {
+                    const txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = '';
+                    } else {
+                        tr[i].style.display = 'none';
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

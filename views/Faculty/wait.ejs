@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waiting for Approval</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+  }
+
+  .loader {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 10px solid #3498db;
+    border-top-color: #f39c12;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-text {
+    margin-top: 20px;
+    font-size: 24px;
+    text-align: center;
+    color: #555;
+    margin-left: 8px;
+  }
+  .text {
+            text-align: center;
+            padding-top: 15px;
+            font-size: 18px;
+        }
+</style>
+</head>
+<body>
+  <div class="loader"></div>
+  <div class="loading-text">Waiting for Approval...</div><br>
+  
+  <script>
+
+  </script>
+</body>
+</html>

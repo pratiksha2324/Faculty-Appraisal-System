@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+        }
+        
+        .container {
+            width: 90%;
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            margin: 20px 0;
+        }
+        
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #e4dbdb;
+            color: #000;
+        }
+        
+        h3 {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #fff;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-approve {
+            background-color: #28a745;
+        }
+        
+        .btn-approve:hover {
+            background-color: #218838;
+        }
+        
+        .btn-pending {
+            background-color: #ffc107;
+        }
+        
+        .btn-pending:hover {
+            background-color: #e0a800;
+        }
+        
+        .btn-view {
+            background-color: #4CAF50;
+        }
+        
+        .btn-view:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h3>Pending Approvals</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>First Name</th>
+                    <th>Middle Name</th>
+                    <th>Last Name</th>
+                    <th>Email ID</th>
+                    <th>Contact No</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (pendingRequests && pendingRequests.length > 0) { %>
+                    <% pendingRequests.forEach(request => { %>
+                        <tr>
+                            <td><%= request.emp_id %></td>
+                            <td><%= request.first_name %></td>
+                            <td><%= request.middle_name %></td>
+                            <td><%= request.last_name %></td>
+                            <td><%= request.email_id %></td>
+                            <td><%= request.contact_no %></td>
+                            <td>
+                                <form action="/principal/approve" method="post" style="display:inline;">
+                                    <input type="hidden" name="user_id" value="<%= request.user_id %>">
+                                    <button type="submit" class="btn-approve">Approve</button>
+                                    <button class="btn-pending" >Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="7" style="text-align:center;">No pending requests</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+         
+        body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+thead {
+    background-color: #f8f8f8;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+    </style>
+    </style>
+    <script>
+        function validateForm() {
+            var rows = document.querySelectorAll('tbody tr');
+            for (var i = 0; i < rows.length; i++) {
+                var maxScore = parseInt(rows[i].querySelector('.max-score').textContent);
+                var selfApprovedScore = parseInt(rows[i].querySelector('.self-approved-score').value);
+                if (selfApprovedScore > maxScore) {
+                    alert('Self Approved Score should be less than Maximum Score');
+                    return false;
+                }
+            }
+            return true;
+        }
+    </script>
+</head>
+<body>
+    <div class="dashboard-container">
+    <h1>Dashboard</h1>
+    <form onsubmit="return validateForm()" action="/faculty/upload" method="post" enctype="multipart/form-data">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sr No</th>
+                    <th>Parameter</th>
+                    <th>Maximum Scores</th>
+                    <th>Self Approved Scores</th>
+                    <th>Supportive Doc</th>
+                    <th>Committee Approved Scores</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% data[0].forEach((row,index) => { %>
+                    <tr>
+                        <td><%= row.sr_no %></td>
+                        <td><%= row.Parameter %></td>
+                        <td class="max-score"><%= row.Maximum_Scores %></td>
+                     <td>  <input type="number" class="self-approved-score" name="self_approved_scores[<%= row.sr_no %>]" value="<%= row.Self_Approved_Scores %>"></td> 
+                     <td>
+                        <input type="file" name="supportive_doc[<%= row.sr_no %>][ ]" accept=".pdf, image/*" multiple onchange="checkFileCount(this)">                    </td>
+
+                        <td><%= row.Committe_Approved_Scores != null ? row.Committe_Approved_Scores : 'Waiting' %></td>                      
+                      
+                       
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+        <input type="submit" value="Submit">
+    </form>
+    </div>
+    <div id="preview"></div>
+    <script>
+        function checkFileCount(input) {
+            var fileCount = input.files.length;
+            alert('You have selected ' + fileCount + ' file(s).');
+
+            var previewContainer = document.getElementById('preview');
+            previewContainer.innerHTML = ''; // Clear out the old previews
+
+            for (var i = 0; i < fileCount; i++) {
+                var file = input.files[i];
+                if (file.type.startsWith('image/')) { // Only preview image files
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.width = '100px'; // Set the image width
+                        previewContainer.appendChild(img);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
