@@ -1,0 +1,125 @@
+<%- include("nav")%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adding Criteria</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 80px auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        select, input[type="text"], input[type="number"], button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 96%;
+        }
+        button {
+            margin-top: 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #3a6073, #3a7bd5);
+        }
+
+        /* Message styles */
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            color: red;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+    <script>
+        function validateForm() {
+            const parameter = document.getElementById("parameter").value;
+            const totalMarks = document.getElementById("totalMarks").value;
+
+            if (parameter.trim() === "" || totalMarks.trim() === "") {
+                alert("All fields are required!");
+                return false;
+            }
+
+            if (isNaN(totalMarks) || totalMarks <= 0) {
+                alert("Total Marks must be a positive number!");
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+   
+
+    <!-- Display Success or Error Messages Here -->
+    <% if (success && success.length>0) { %>
+        <div class="success-message"><%= success %></div>
+    <% } %>
+    <% if (errors.length > 0) { %>
+        <div class="error-message">
+            <% errors.forEach(error => { %>
+                <p><%= error %></p>
+            <% }); %>
+        </div>
+    <% } %>
+    <h2>Add New CRITERIA FORM</h2>
+    <!-- Form -->
+    <form id="criteriaForm" action="/committee/addCriteria" method="post" onsubmit="return validateForm();">
+        <label for="criteria_description">Description:</label>
+        <input type="text" id="criteria_description" name="criteria_description" required><br>
+        <label for="max_marks">Max Marks:</label>
+        <input type="number" id="max_marks" name="max_marks" required><br>
+
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+</body>
+</html>

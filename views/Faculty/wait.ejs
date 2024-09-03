@@ -1,56 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waiting for Approval</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
-  }
-
-  .loader {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 10px solid #3498db;
-    border-top-color: #f39c12;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .loading-text {
-    margin-top: 20px;
-    font-size: 24px;
-    text-align: center;
-    color: #555;
-    margin-left: 8px;
-  }
-  .text {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting for Approval</title>
+    <style>
+        h1 {
+            color: white;
+        }
+        body {
+            background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 80px;
+            height: 100vh;
+        }
+        .container-main{
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .container {
+            width: 300px ;/* Reduced width */
+            height: 300px; /* Reduced height */
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
-            padding-top: 15px;
+           
+        }
+        .loading-text {
+            margin-top: 10px;
             font-size: 18px;
         }
-</style>
+        .approval-message {
+            display: none; /* Hide the message initially */
+            margin-top: 20px;
+            font-size: 24px; /* Increased font size */
+            color: white; /* Changed text color */
+            background-color: green; /* Added background color */
+            border: 2px solid white; /* Changed border color */
+            padding: 10px; /* Add some padding */
+            border-radius: 5px; /* Add rounded corners */
+        }
+        .loader-img {
+            width: 200px; /* Set width */
+            height: 200px; /* Set height */
+        }
+    </style>
 </head>
 <body>
-  <div class="loader"></div>
-  <div class="loading-text">Waiting for Approval...</div><br>
-  
-  <script>
+    <div id="approvalMessage" class="approval-message">Your request has been approved. Please log in.</div>
+    <div class="container-main">
+        <div class="container">
+            <div id="loader">
+                <img class="loader-img" src="/images/wait.gif" alt="Loading..."> <!-- Added class -->
+                <div class="loading-text">Waiting for Approval...</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function checkStatus() {
+            fetch('/faculty/check-status?email=<%= email %>')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message === 'Your request has been approved. Please log in.') {
+                        document.getElementById('approvalMessage').style.display = 'block';
+                       
+                        setTimeout(() => {
+                            // Redirect with email as query parameter
+                            window.location.href = `/faculty/login?username=<%= email %>`;
+                        }, 3000);
+                    }
+                })
+                .catch(error => console.error('Error checking user status:', error));
+        }
 
-  </script>
+        setInterval(checkStatus, 1000);
+    </script>
 </body>
 </html>

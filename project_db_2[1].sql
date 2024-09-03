@@ -69,6 +69,7 @@ END//
 DELIMITER ;
 
 -- Table for user master
+-- Step 1: Create the `user_master` table
 CREATE TABLE user_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(50) UNIQUE,
@@ -89,6 +90,10 @@ CREATE TABLE user_master (
     FOREIGN KEY (dept_id) REFERENCES department_master(dept_id),
     FOREIGN KEY (user_type_id) REFERENCES user_type_master(user_type_id)
 );
+
+
+
+
 
 DELIMITER //
 CREATE TRIGGER before_insert_user_master
@@ -171,39 +176,12 @@ BEGIN
 END//
 DELIMITER ;
 
--- Function to get employee user_id
-DELIMITER //
-CREATE FUNCTION get_employee_user_id (user_id VARCHAR(50)) RETURNS VARCHAR(50)
-DETERMINISTIC
-READS SQL DATA
-BEGIN
-    DECLARE emp_user_id VARCHAR(50);
-    SELECT user_id INTO emp_user_id
-    FROM user_master
-    WHERE user_id = user_id AND user_type_id IN (SELECT user_type_id FROM user_type_master WHERE user_type_type = 'employee');
-    RETURN emp_user_id;
-END//
-DELIMITER ;
-
--- Function to get committee user_id
-DELIMITER //
-CREATE FUNCTION get_committee_user_id (user_id VARCHAR(50)) RETURNS VARCHAR(50)
-DETERMINISTIC
-READS SQL DATA
-BEGIN
-    DECLARE comm_user_id VARCHAR(50);
-    SELECT user_id INTO comm_user_id
-    FROM user_master
-    WHERE user_id = user_id AND user_type_id IN (SELECT user_type_id FROM user_type_master WHERE user_type_type = 'committee');
-    RETURN comm_user_id;
-END//
-DELIMITER ;
 
 -- Table for committee master
 CREATE TABLE committee_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
     committee_record_id VARCHAR(50) UNIQUE,
-     record_id VARCHAR(50) , FOREIGN key (record_id) REFERENCES self_appraisal_score_master(record_id),
+    record_id VARCHAR(50) , FOREIGN key (record_id) REFERENCES self_appraisal_score_master(record_id),
     user_id_employee VARCHAR(50),
     user_id_committee VARCHAR(50),
     comm_score INT,
@@ -221,10 +199,8 @@ BEFORE INSERT ON committee_master
 FOR EACH ROW
 BEGIN
     DECLARE next_id INT;
-    DECLARE emp_user_id VARCHAR(50);
-    DECLARE comm_user_id VARCHAR(50);
     SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'committee_master');
-    SET NEW.record_id = CONCAT('COM', next_id);
+    SET NEW.committee_record_id = CONCAT('COM', next_id);
 
 END//
 DELIMITER ;
@@ -274,3 +250,141 @@ insert into user_type_master (user_name,password) values ("test","test");
 insert into user_type_master (user_name,password , user_type_type) values ("Nancy","pass","admin");
 insert into user_master(institution_id,dept_id,user_type_id) values ("INS1","DEPT1","USERTY2");
  SELECT COUNT(*) AS count FROM user_master WHERE status = "pending" AND institution_id = "INS1";
+
+
+
+
+  SELECT 
+                c.criteria_id AS 'Criteria Number',
+                c.criteria_description AS 'Criteria Name',
+                CASE 
+                    WHEN sas.record_id IS NULL THEN 'Pending'
+                    WHEN cm.id IS NOT NULL THEN 'Approved'
+                    ELSE 'Applied'
+                END AS 'Status',
+                CASE 
+                    WHEN sas.record_id IS NULL THEN 'Apply'
+                    WHEN cm.id IS NOT NULL THEN 'View'
+                    ELSE 'Edit'
+                END AS 'Action'
+            FROM 
+                criteria_master c
+            LEFT JOIN 
+                self_appraisal_score_master sas ON c.criteria_id = sas.c_parameter_id AND sas.user_id = "USR5"
+            LEFT JOIN 
+                committee_master cm ON c.criteria_id = cm.c_parameter_id AND cm.user_id_employee ="USR5"
+            WHERE 
+                c.status = 'active';
+
+
+
+
+
+
+                 SELECT c.criteria_description AS 'Criteria Name', cp.*
+            FROM criteria_master c
+            JOIN c_parameter_master cp ON c.criteria_id = cp.criteria_id
+            WHERE c.criteria_id = "CRIT1" AND cp.status = 'active';
+
+
+
+
+
+
+
+
+
+
+
+--Criteria Status
+
+
+  SELECT c.criteria_id AS 'Criteria Number',
+                c.criteria_description AS 'Criteria Name',
+                CASE
+                    WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
+                    ELSE 'Not Applied'
+                END AS 'Self-Appraisal Status',
+                CASE
+                    WHEN MAX(cm.record_id) IS NOT NULL THEN 'Reviewed'
+                    ELSE 'Not Reviewed'
+                END AS 'Committee Status'
+            FROM criteria_master c
+            LEFT JOIN c_parameter_master p
+                ON c.criteria_id = p.criteria_id
+            LEFT JOIN self_appraisal_score_master sas
+                ON p.c_parameter_id = sas.c_parameter_id AND sas.user_id ="USR9" AND sas.status = 'active'
+            LEFT JOIN committee_master cm
+                ON p.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee ="USR9" AND cm.status = 'active'
+            WHERE c.status = 'active'
+            GROUP BY c.criteria_id, c.criteria_description;
+
+
+
+--criteria View
+
+               SELECT c.criteria_id AS 'Criteria Number',
+                c.criteria_description AS 'Criteria Name',
+                COALESCE(sas.max_marks, 'Not Available') AS 'Max Marks',
+                COALESCE(sas.self_approved_marks, 'Not Available') AS 'Self-Approved Marks',
+                COALESCE(cm.marks_by_committee, 'Not Available') AS 'Marks by Committee',
+                d.document_url AS 'Document URL'
+            FROM criteria_master c
+            LEFT JOIN self_appraisal_score_master sas
+                ON c.criteria_id = sas.criteria_id AND sas.user_id ="USR5" AND sas.status = 'active'
+            LEFT JOIN committee_master cm
+                ON c.criteria_id = cm.criteria_id AND cm.user_id_employee ="USR5" AND cm.status = 'active'
+            LEFT JOIN document_master d
+                ON c.criteria_id = d.criteria_id
+            WHERE c.criteria_id = "CRIT1";
+
+
+
+
+
+
+
+
+insert into user_type_master (user_name,password,user_type_type) values("apurva","password","committee");            
+insert into user_master(institution_id,dept_id,user_type_id) values ("INS1","DEPT1","USERTY8");
+
+insert into user_type_master (user_name,password,user_type_type) values("prernajaju1703@gmail.com","password","admin"); 
+
+insert into user_type_master (user_name,password,user_type_type) values("patumane3638@gmail.com","password","committee"); 
+insert into user_master(institution_id,dept_id,user_type_id) values ("INS2","DEPT2","USERTY7");
+
+-- Insert values into user_master
+INSERT INTO user_master (first_name, middle_name, last_name, email_id, contact_no, pan_card_no, addhar_no,  institution_id,dept_id, user_type_id)
+VALUES
+( 'Prerna ', 'Shrinivas', 'Jaju', 'prernajaju1703@gmail.com', '1234567890', 'ABCDE1234F', '123456789012', 'INS1',"DEPT1","USERTY15");
+
+CREATE TABLE OTP_MASTER (ID INT AUTO_INCREMENT PRIMARY KEY, OTP_ID VARCHAR(250) UNIQUE, EMAIL_ID VARCHAR(250), FOREIGN KEY(EMAIL_ID) REFERENCES USER_type_MASTER(user_name), OTP VARCHAR(10), TIMESTAMP TIMESTAMP DEFAULT CURRENT_TIMESTAMP, STATUS ENUM('active', 'inactive') DEFAULT "active");
+DELIMITER // CREATE TRIGGER BEFORE_INSERT_OTP_MASTER BEFORE INSERT ON OTP_MASTER FOR EACH ROW BEGIN DECLARE NEXT_ID INT;
+SET NEXT_ID = (
+  SELECT
+    AUTO_INCREMENT
+  FROM
+    INFORMATION_SCHEMA.TABLES
+  WHERE
+    TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'otp_master'
+);
+SET NEW.OTP_ID = CONCAT('OTP', NEXT_ID);
+END// DELIMITER;
+
+insert into user_type_master (user_name,password,user_type_type) values("superAdmin","superAdmin" , 'superAdmin');
+
+Alter table user_type_master auto_increment = 0;
+Alter table institution_master auto_increment = 0;
+Alter table department_master auto_increment = 0;
+Alter table otp_master auto_increment = 0;
+Alter table criteria_master auto_increment = 0;
+Alter table user_master auto_increment = 0;
+Alter table committee_master auto_increment = 0;
+Alter table self_appraisal_score_master auto_increment = 0;
+Alter table c_parameter_master auto_increment = 0;
+Alter table document_master auto_increment = 0;   
+insert into institution_master (institution_name,location) values ("Fergusson College","Pune");
+insert into department_master (department_name,institution_id) values ("CS","INS1");
+insert into user_type_master (user_name,password,user_type_type) values ("apurva3barthwal@gmail.com","password","admin");
+insert into user_master(institution_id,dept_id,user_type_id) values ("INS1","DEPT1","USERTY1");

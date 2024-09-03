@@ -1,7 +1,7 @@
+import bcrypt from 'bcryptjs';
 import express from 'express';
-import jwt from 'jsonwebtoken';
-
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import facultyDb from '../faculty.db.js';
@@ -61,201 +61,85 @@ router.use((req, res, next) => {
 
 
 router.get('/login', (req, res) => {
-    res.render("./Faculty/login");
+    const message = req.query.message || '';
+    const error = req.query.error || '';
+    const username = req.query.username || '';
+    res.render('./Faculty/login', { message, error, username });
 });
+
+
+
 
 router.post('/login', async (req, res) => {
     console.log("admin2");
 
-    const username = req.body.uname;
+    const username = req.body.username;
+    const email=username;
     const password = req.body.password;
 
     try {
         const result = await facultyDb.query(
-            'SELECT * FROM user_type_master WHERE user_name = ? AND password = ? And user_type_type ="employee"',
-            [username, password]
+            'SELECT * FROM user_type_master WHERE user_name = ? AND user_type_type = "employee"',
+            [username]
         );
         const user = result[0];
 
         if (user.length > 0) {
             const user_id = user[0].user_type_id;
             const role = 'faculty'; // Hardcoding role for faculty
-            const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
-            
-            res.cookie('token', token, { httpOnly: true });
-            res.redirect('/Faculty/home');
-            //res.render('./Faculty/dashboard', { data: data });
+            const status = user[0].status; // Assuming `status` is a field in `user_type_master`
+            const hashedPassword = user[0].password; // Assuming `password` is a field in `user_type_master`
+
+            const passwordMatch = await bcrypt.compare(password, hashedPassword);
+            const isDefaultPassword = await bcrypt.compare('Misfits', hashedPassword);
+
+            // Check if the user status is inactive
+            if (status === 'inactive') {
+                res.redirect(`/faculty/wait?email=${encodeURIComponent(email)}`);
+            } else if (!passwordMatch) {
+                res.render('./Faculty/login', { error: 'Invalid username or password', message: '', username: email});
+            } else {
+                // Check if the password is the default password
+                if (isDefaultPassword) {
+                    res.redirect(`/faculty/reset-password?user_id=${user_id}`);
+                } else {
+                    const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
+                    res.cookie('token', token, { httpOnly: true });
+                    res.redirect('/Faculty/home');
+                    //res.render('./Faculty/dashboard', { data: data });
+                }
+            }
         } else {
-            res.render('./Faculty/login', { error: 'Invalid username or password' });
+            res.render('./Faculty/login', { error: 'Invalid username or password', message: '', username: '' });
         }
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
     }
 });
+router.get('/logout', (req, res) => {
+    // Clear the JWT token cookie
+    res.clearCookie('token');
+    
+    // Redirect the user to the login page or home page after logout
+    res.redirect('/faculty/login'); // Adjust the path as needed
+});
+
+
+
 router.get("/home", async (req, res) => {
     console.log('Faculty home');
     const userId = req.user.user_id;
-  
+  res.render('./Faculty/home');
 
-    try {
-        const [userTypeResult] = await facultyDb.query(
-            "SELECT user_type_id FROM user_master WHERE user_type_id = ?",
-            [userId]
-        );
-            console.log(userTypeResult)
-        const userTypeId = userTypeResult[0]?.user_type_id;
 
-        if (userTypeId) {
-            console.log('User type ID found:', userTypeId);
-            res.redirect('/dashboard'); // Redirect to dashboard if user_type_id is found
-        } else {
-            console.log('No user_type_id found for the given user ID');
-            res.redirect('/faculty/register'); // Redirect to register if user_type_id is not found
-        }
-    } catch (error) {
-        console.error('Error executing query', error);
-        res.status(500).send('Internal Server Error');
-    }
 });
 
 
-router.post('/upload', upload.any(), async (req, res) => {
-    if (!req.user) return res.status(401).send('Access denied. No token provided.');
-    try {
-        const userId = req.user.user_id;
-        console.log('User ID from JWT:', userId); // Log the user ID from JWT
-        const scores = req.body.self_approved_scores;
-        const docs = req.files;
-
-        for (let i = 0; i < docs.length; i++) {
-            const doc = docs[i];
-            const sr_no = parseInt(doc.fieldname.match(/\d+/)[0]); // Extract the sr_no from the fieldname
-            const score = scores[sr_no ]; // Adjust this line if the scores are not 0-indexed
-
-            // Replace backslashes with forward slashes in the path and remove '/public'
-            let docPath = doc.path.replace(/\\/g, '/').replace(/^public\//, '');
-
-            console.log('Document path:', docPath);
-
-            // First, check if the user_id and sr_no already exist in the teaching_user table
-            const [rows] = await facultyDb.query(
-                'SELECT * FROM teaching_user WHERE user_id = ? AND sr_no = ?',
-                [userId, sr_no]
-            );
-
-            // If not, insert them
-            if (rows.length === 0) {
-                await facultyDb.query(
-                    'INSERT INTO teaching_user (user_id, sr_no) VALUES (?, ?)',
-                    [userId, sr_no]
-                );
-            }
-
-            // Then, update the Self_Approved_Scores
-            await facultyDb.query(
-                'UPDATE teaching_user SET Self_Approved_Scores = ? WHERE user_id = ? AND sr_no = ?',
-                [score, userId, sr_no]
-            );
-
-            // Finally, insert into the teaching_doc table
-            await facultyDb.query(
-                'INSERT INTO teaching_doc (user_id, sr_no, supportive_doc) VALUES (?, ?, ?)',
-                [userId, sr_no, docPath]
-            );
-        }
-
-        res.redirect("/faculty/dashboard2");
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
-    }
-});
-router.get('/dashboard2', async (req, res) => {
-    if (!req.user) return res.status(401).send('Access denied. No token provided.');
-
-    try {
-        const userId = req.user.user_id;
-
-        // Fetch the data from the database
-        const [rows] = await facultyDb.query(
-            `SELECT u.email_id, t.sr_no, t.Parameter, t.Maximum_Scores, tu.Self_Approved_Scores, td.supportive_doc 
-            FROM teaching t 
-            INNER JOIN teaching_user tu ON t.sr_no = tu.sr_no 
-            INNER JOIN user_master u ON tu.user_id = u.user_id 
-            LEFT JOIN teaching_doc td ON tu.user_id = td.user_id AND tu.sr_no = td.sr_no 
-            WHERE tu.user_id = ?`,
-            [userId]
-        );
-
-        // Group the supportive_doc by sr_no
-        const data = rows.reduce((acc, row) => {
-            if (!acc[row.sr_no]) {
-                // If this sr_no is not yet in the accumulator, add it
-                acc[row.sr_no] = { ...row, supportive_doc: [row.supportive_doc] };
-            } else {
-                // If this sr_no is already in the accumulator, append the supportive_doc
-                acc[row.sr_no].supportive_doc = [...acc[row.sr_no].supportive_doc, row.supportive_doc];
-            }
-            return acc;
-        }, {});
-
-        const totalMaximumScores = rows.reduce((total, row) => total + row.Maximum_Scores, 0);
-        const totalSelfApprovedScores = rows.reduce((total, row) => total + row.Self_Approved_Scores, 0);
-        
-        // Render the EJS template and pass the data
-        res.render('./Faculty/dashboard2', { 
-            data: Object.values(data), 
-            totalMaximumScores, 
-            totalSelfApprovedScores 
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
-    }
-});
-
-router.get("/criteria", async (req, res) => {
-    try {
-        const data = await facultyDb.query('SELECT criteria_description FROM criteria_master');
-        if (!data) {
-            console.log('No data returned from the query');
-            res.status(500).send('No data returned from the query');
-            return;
-        }
-        res.render('./Faculty/criteriaSelect', {data: data[0] });
-    } catch (error) {
-        console.error('Error executing query', error);
-        res.status(500).send('Error executing query');
-    }
-});
-router.post("/criteria", async (req, res) => {
-    const criteria=req.body.criteria_name;
-    const Parameter=req.body.parameter;
-    const total = req.body.totalMarks;
-    try {
-        const data = await facultyDb.query('SELECT criteria_id  FROM criteria_master where criteria_description=?',[criteria]);
-        if (!data) {
-            console.log('No data returned from the query');
-            res.status(500).send('No data returned from the query');
-            return;
-        }
-
-        console.log(data[0][0].criteria_id);
-        const criteria_id=data[0][0].criteria_id;
-        const result = await facultyDb.query('INSERT INTO  c_parameter_master (criteria_id,parameter_description , parameter_max_marks ) VALUES (?,?,?)',[criteria_id,Parameter,total]);
-
-        res.redirect("/faculty/criteria");
-    } catch (error) {
-        console.error('Error executing query', error);
-        res.status(500).send('Error executing query');
-    }
-
-});
 
 router.get('/register', (req, res) => {
-    res.render('./Faculty/registration');
+
+    res.render('./Faculty/registration',{successMsg:"",errorMsg:""});
 })
 router.post('/register', async (req, res) => {
     const {
@@ -268,32 +152,42 @@ router.post('/register', async (req, res) => {
         panCard,
         aadhaar,
         employeeId,
-        instituteId, // Expecting the name of the institute from the form
-        departmentId // Expecting the name of the department from the form
+        instituteId, 
+        departmentId 
     } = req.body;
-    console.log(firstName + ' ' + middleName + ' ' + email + ' ' + contact + ' ' + dob + ' ' + panCard + ' ' + aadhaar + ' ' + employeeId + ' ' + instituteId + ' ' + departmentId);
-
     
-
     try {
-        const password= "Misfits"
+        const password = "Misfits";
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        // Insert into user_type_master table
+        const sql = `INSERT INTO user_type_master (user_name, password, user_type_type, status) VALUES (?, ?, ?, ?)`;
+        try {
+            const [result1] = await facultyDb.execute(sql, [email, hashedPassword, 'employee', 'inactive']);
+            console.log('Insert Result (user_type_master):', result1);
+        } catch (error) {
+            if (error.code === 'ER_DUP_ENTRY') {
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "User already exists with the given email." });
+            } else {
+                console.error('Error inserting into user_type_master:', error);
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "An error occurred while registering the user." });
+            }
+        }
 
+        // Retrieve the user_type_id
+        const idQuery = `SELECT user_type_id FROM user_type_master WHERE user_name = ?`;
+        let user_type_id;
+        try {
+            const [result2] = await facultyDb.execute(idQuery, [email]);
+            console.log('Select Result (user_type_id):', result2[0]);
+            user_type_id = result2[0].user_type_id; // Get the user_type_id
+        } catch (error) {
+            console.error('Error retrieving user_type_id:', error);
+            return res.render('./Faculty/registration', { successMsg: "", errorMsg: "An error occurred while retrieving user data." });
+        }
 
-        
-        
-        const sql = ` insert into user_type_master (user_name,password,user_type_type) values (?,?,?)`;
-        const [result1] = await facultyDb.execute(sql, [email, password, 'employee']);
-        console.log('Insert Result:', result1);
-
-      
-        const id = `select user_type_id from user_type_master where user_name = ?`;
-        const [result2] = await facultyDb.execute(id, [email]);
-        console.log('Insert Result:', result2[0]);
-
-        const user_type_id = result2[0].user_type_id; // Get the user_type_id
-
-
-        const query = `
+        // Insert into user_master table
+        const userInsertQuery = `
             INSERT INTO user_master (
                 first_name,
                 middle_name,
@@ -310,38 +204,349 @@ router.post('/register', async (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'inactive')
         `;
 
-        const [result] = await facultyDb.execute(query, [
-            firstName,
-            middleName,
-            lastName,
-            email,
-            contact,
-            panCard,
-            aadhaar,
-            employeeId,
-            instituteId,
-            departmentId,
-            user_type_id
-        ]);
+        try {
+            const [result] = await facultyDb.execute(userInsertQuery, [
+                firstName,
+                middleName,
+                lastName,
+                email,
+                contact,
+                panCard,
+                aadhaar,
+                employeeId,
+                instituteId,
+                departmentId,
+                user_type_id
+            ]);
+            console.log('Insert Result (user_master):', result);
+        } catch (error) {
+            if (error.code === 'ER_DUP_ENTRY') {
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "Duplicate entry detected. Please ensure unique values for email, PAN, and Aadhaar." });
+            } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "Invalid institution or department ID." });
+            } else {
+                console.error('Error inserting into user_master:', error);
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "An error occurred while saving user details." });
+            }
+        }
 
-        console.log('Insert Result:', result);
-        res.redirect("/Faculty/wait");
+        res.redirect(`/faculty/wait?email=${encodeURIComponent(email)}`);
+
     } catch (error) {
-        console.error('Error inserting data:', error);
+        console.error('Unexpected Error:', error);
+        res.status(500).render('./Faculty/registration', { successMsg: "", errorMsg: "Internal Server Error." });
+    }
+});
+
+// Endpoint for rendering the wait.ejs page
+router.get("/wait", (req, res) => {
+    const email = req.query.email; // Get the email from query parameters
+
+    if (!email) {
+        return res.status(400).send('Email is required to check the approval status.');
+    }
+
+    // Render the wait page
+    return res.render('./Faculty/wait', { email });
+});
+
+// Endpoint for checking the user status
+router.get("/check-status", async (req, res) => {
+    const email = req.query.email; // Get the email from query parameters
+    console.log("test")
+    if (!email) {
+        return res.status(400).send('Email is required to check the approval status.');
+    }
+
+    try {
+        // Fetch the user's status from the database using email
+        const [result] = await facultyDb.query(
+            'SELECT status FROM user_type_master WHERE user_name = ?',
+            [email]
+        );
+
+        if (result.length > 0) {
+            const status = result[0].status;
+
+            // Check if the status is now active
+            if (status === 'active') {
+                // Send a success response with the approval message
+                console.log("pass")
+                return res.json({message:'Your request has been approved. Please log in.',username : email});
+            } else {
+                // If still inactive, send a response with the status
+                return res.json({message: 'Your request is still pending.', status: 'inactive'});
+            }
+        } else {
+            return res.status(404).send('User not found.');
+        }
+    } catch (error) {
+        console.error('Error checking user status:', error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+
+// Fetch parameters based on criteria
+router.get('/get-parameters/:criteriaId', async (req, res) => {
+    const criteriaId = req.params.criteriaId;
+    try {
+        const [rows] = await facultyDb.execute('SELECT c_parameter_id, parameter_description FROM c_parameter_master WHERE criteria_id = ? AND status = "active"', [criteriaId]);
+        res.json({ parameters: rows });
+    } catch (error) {
+        console.error('Error fetching parameters:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 
-router.get("/wait", async(req, res) =>{
-        res.render("./Faculty/wait")
-})
-
-
-
-
 
 router.get("/dashboard", async(req, res) =>{
-
+    res.render("./Faculty/appraisal")
 })
+router.get('/reset-password', (req, res) => {
+    const user_id = req.query.user_id;
+    res.render('./Faculty/reset-password', { user_id });
+});
+
+router.post('/reset-password', async (req, res) => {
+    const user_id = req.body.user_id;
+    const newPassword = req.body.newPassword;
+    const confirmPassword = req.body.confirmPassword;
+    console.log(confirmPassword, newPassword, user_id);
+
+    if (newPassword === confirmPassword) {
+        try {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+            const result = await facultyDb.query(
+                'UPDATE user_type_master SET password = ? WHERE user_type_id = ?',
+                [hashedPassword, user_id]);
+            
+            // Get the username from the database using the user_id
+            const userResult = await facultyDb.query(
+                'SELECT user_name FROM user_type_master WHERE user_type_id = ?',
+                [user_id]
+            );
+            const username = userResult[0][0].user_name;
+
+            res.redirect(`/Faculty/login?message=Password changed successfully!&username=${encodeURIComponent(username)}`);
+        } catch (err) {
+            console.error(err);
+            res.status(500).send('Server error');
+        }
+    } else {
+        res.render('reset-password', { user_id, error: 'Passwords do not match. Please try again.' });
+    }
+});
+
+
+router.get('/criteria-status', async (req, res) => {
+    console.log("criteria-status");
+    const successMsg = req.query.successMsg || "";
+    try {
+        // Get user type ID from the request
+        const userTypeId = req.user.user_id;
+        if (!userTypeId) {
+            return res.status(400).send('User type ID is required');
+        }
+
+        // Query to get the user ID based on the user type ID
+        const sql = `SELECT user_id FROM user_master WHERE user_type_id = ?`;
+        const result = await facultyDb.query(sql, [userTypeId]);
+        console.log('User Query Result:', result);
+
+        if (result.length === 0) {
+            return res.status(404).send('User not found');
+        }
+
+        const userId = result[0][0].user_id;
+        console.log('User IDaa:', userId);
+
+        // SQL query to get criteria status and actions
+        const query2 = `
+            SELECT
+                c.criteria_id AS 'Criteria Number',
+                c.criteria_description AS 'Criteria Name',
+                CASE
+                    WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
+                    ELSE 'Not Applied'
+                END AS 'Self-Appraisal Status',
+                CASE
+                    WHEN MAX(cm.record_id) IS NOT NULL THEN 'Reviewed'
+                    ELSE 'Not Reviewed'
+                END AS 'Committee Status'
+            FROM criteria_master c
+            LEFT JOIN c_parameter_master p
+                ON c.criteria_id = p.criteria_id
+            LEFT JOIN self_appraisal_score_master sas
+                ON p.c_parameter_id = sas.c_parameter_id AND sas.user_id = ? AND sas.status = 'active'
+            LEFT JOIN committee_master cm
+                ON p.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee = ? AND cm.status = 'active'
+            WHERE c.status = 'active'
+            GROUP BY c.criteria_id, c.criteria_description;
+        `;
+
+        // Execute the query with the user ID
+        const results2 = await facultyDb.query(query2, [userId, userId]);
+        console.log('Criteria Results21:', results2[0]);
+
+        if (results2.length === 0) {
+            console.log('No criteria data found');
+        }
+
+        // Render the results in the view
+        res.render('./Faculty/criteria-status', { userId, data: results2[0] ,successMsg});
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+
+router.post("/apply", upload.any(), async (req, res) => {
+    if (!req.user) {
+        return res.status(401).send('Access denied. No token provided.');
+    }
+
+    const userTypeId = req.user.user_id;
+    const criteriaId = req.body.criteriaId;
+
+    try {
+        // Fetch user ID based on userTypeId
+        const [userResults] = await facultyDb.query('SELECT user_id FROM user_master WHERE user_type_id = ?', [userTypeId]);
+        
+        if (userResults.length === 0) {
+            return res.status(404).send('User not found');
+        }
+
+        const userId = userResults[0].user_id;
+        const marksData = [];
+        const documentData = {};
+
+        // Prepare data for self_appraisal_score_master
+        for (const param in req.body) {
+            if (param.startsWith('self_approved_')) {
+                const paramId = param.replace('self_approved_', '');
+                const marks = parseInt(req.body[param], 10);
+                if (!isNaN(marks)) {
+                    marksData.push([userId, marks, paramId, 'active']);
+                }
+            }
+        }
+
+        // Insert self-approved marks one by one
+        for (const mark of marksData) {
+            await facultyDb.query('INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status) VALUES (?, ?, ?, ?)', mark);
+        }
+
+        // Prepare data for document_master
+        req.files.forEach(file => {
+            const paramIdMatch = file.fieldname.replace(/^public\//, '').match(/^documents_(C_PARA\d+)\[\]$/);
+            const paramId = paramIdMatch ? paramIdMatch[1] : null;
+            if (paramId) {
+                const docPath = file.path.replace(/\\/g, '/').replace(/^public\//, '');
+                if (!documentData[paramId]) {
+                    documentData[paramId] = [];
+                }
+                documentData[paramId].push(docPath);
+            } else {
+                console.error('Invalid parameter ID in field name:', file.fieldname);
+            }
+        });
+
+        // Insert documents one by one with sequential document count
+        for (const paramId in documentData) {
+            const docArray = documentData[paramId];
+            let docCount = 1; // Start doc count from 1 for each parameter
+            for (const docPath of docArray) {
+                await facultyDb.query('INSERT INTO document_master (user_id, c_parameter_id, doc_count, doc_link, location, status) VALUES (?, ?, ?, ?, ?, ?)', [userId, paramId, docCount, docPath, 'uploads/', 'active']);
+                docCount++; // Increment doc count for each document
+            }
+        }
+
+        const successMsg = 'Documents and marks uploaded successfully';
+        res.redirect(`/faculty/criteria-status?successMsg=${successMsg}`);
+    } catch (error) {
+        console.error('Error processing request:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+router.get('/apply', async (req, res) => {
+    const { criteriaId } = req.query;
+
+    try {
+        // Fetch criteria details
+        const criteriaQuery = `
+            SELECT c.criteria_description AS 'Criteria Name', cp.*
+            FROM criteria_master c
+            JOIN c_parameter_master cp ON c.criteria_id = cp.criteria_id
+            WHERE c.criteria_id = ?
+        `;
+        const parameters = await facultyDb.query(criteriaQuery, [criteriaId]);
+        const CriteriaName = parameters[0][0]['Criteria Name'];        console.log(CriteriaName);
+        // Render EJS template
+        res.render('faculty/apply', { parameters: parameters[0], criteriaId,CriteriaName });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+
+
+router.get('/view', async (req, res) => {
+    const userTypeId = req.user.user_id;
+    const { criteriaId } = req.query;
+   
+    try {
+        const [userResults] = await facultyDb.query('SELECT user_id FROM user_master WHERE user_type_id = ?', [userTypeId]);
+        
+        if (userResults.length === 0) {
+            return res.status(404).send('User not found');
+        }
+
+        const userId = userResults[0].user_id;
+        const criteriaQuery = `
+        SELECT c.criteria_description AS 'criteriaName', cp.*, sas.marks_by_emp, COALESCE(cm.comm_score, 'Pending') AS committeeScore
+        FROM criteria_master c
+        JOIN c_parameter_master cp ON c.criteria_id = cp.criteria_id
+        LEFT JOIN self_appraisal_score_master sas ON cp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
+        LEFT JOIN committee_master cm ON sas.record_id = cm.record_id
+        WHERE c.criteria_id = ?
+    `;
+        const parameters = await facultyDb.query(criteriaQuery, [userId, criteriaId]);
+
+        // Fetch documents uploaded by the logged-in faculty
+        const documentQuery = `
+            SELECT d.document_id, d.doc_link AS document_path, d.c_parameter_id
+            FROM document_master d
+            JOIN c_parameter_master cp ON d.c_parameter_id = cp.c_parameter_id
+            WHERE cp.criteria_id = ? AND d.user_id = ?
+        `;
+        const documents = await facultyDb.query(documentQuery, [criteriaId, userId]);
+
+        const criteriaName = parameters[0][0].criteriaName;
+
+        // Render EJS template
+        res.render('faculty/edit', { parameters: parameters[0], documents: documents[0], criteriaId, criteriaName });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+
+
+
+
+
+
+
+
+
 
 export default router;

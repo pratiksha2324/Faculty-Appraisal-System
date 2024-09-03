@@ -1,0 +1,232 @@
+<%- include("nav")%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Criteria</title>
+    <style>
+       
+        h1 {
+            color: white;
+        }
+        body {
+            background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 80px;
+            
+            height: 100vh;
+        }
+        .continer-main{
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+}
+        .container {
+            width: 85%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: black;
+        }
+        td {
+            color: white;
+        }
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-copy {
+            background-color: #4CAF50;
+        }
+
+        .btn-save {
+            margin-top: 30px;
+            background-color: #008CBA;
+            width: 200px;
+            height: 50px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .document-link {
+    color: #3a7bd5;
+}
+.copy{
+    margin:10px ;
+}
+.btn-back {
+    background-color: #f44336; /* Red background color */
+    color: white;
+    padding: 6px 12px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+}
+    
+    </style>
+</head>
+<body>
+    <button class="btn btn-back" onclick="history.back()">Back</button>
+
+    <div class="continer-main">
+    <div class="container">
+        <h1><%= criteriaName ? criteriaName : 'No Criteria' %></h1>
+        <div class="copy">
+            <input type="checkbox" id="approveScoresCheckbox" onclick="copyScores()">
+            <label for="approveScoresCheckbox">Approve Self-Approved Scores</label>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Parameter Name</th>
+                    <th>Max Score</th>
+                    <th>Self Approved Score</th>
+                    <th>Committee Score</th>
+                    <th>Supportive Documents</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% let totalMaxMarks = 0, totalSelfApproved = 0, totalCommitteeScore = 0; %>
+                <% parameters.forEach((param, index) => { %>
+                    <% totalMaxMarks += param.parameter_max_marks; %>
+                    <% totalSelfApproved += param.marks_by_emp || 0; %>
+                    <% totalCommitteeScore += param.committeeScore !== 'Pending' ? param.committeeScore : 0; %>
+                    <tr>
+                        <td><%= index + 1 %></td>
+                        <td><%= param.parameter_description %></td>
+                        <td><%= param.parameter_max_marks %></td>
+                        <td><%= param.marks_by_emp || 'N/A' %></td>
+                        <td>
+                            <input type="number" class="committee-score" 
+                                   value="<%= param.committeeScore || '' %>" 
+                                   min="0" max="<%= param.parameter_max_marks %>"
+                                   oninput="validateCommitteeScore(this)"
+                                   name="committee_score_<%= param.c_parameter_id %>">
+                        </td>
+                        <td>
+                            <% let paramDocs = documents.filter(doc => doc.c_parameter_id === param.c_parameter_id); %>
+                            <% if (paramDocs.length > 0) { %>
+                                <% paramDocs.forEach(doc => { %>
+                                    <a href="/<%= doc.document_path %>" target="_blank" class="document-link">Document <%= doc.document_id %></a><br>
+                                <% }); %>
+                            <% } else { %>
+                                No documents
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }) %>
+                <tr>
+                    <td colspan="2">Total</td>
+                    <td><%= totalMaxMarks %></td>
+                    <td><%= totalSelfApproved %></td>
+                    <td id="totalCommitteeScore"><%= totalCommitteeScore %></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <form id="saveForm" action="/committee/save-committee-scores" method="POST">
+            <input type="hidden" name="criteria_id" value="<%= criteriaId %>">
+            <input type="hidden" name="user_id" value="<%= userId %>">
+            <% parameters.forEach(param => { %>
+                <input type="hidden" id="hidden_committee_score_<%= param.c_parameter_id %>" name="committee_score_<%= param.c_parameter_id %>" value="">
+            <% }); %>
+            <button type="submit" class="btn btn-save">Approved</button>
+        </form>
+    </div>
+</div>
+    <script>
+        document.getElementById('saveForm').addEventListener('submit', function() {
+    // Iterate through all committee score inputs
+    document.querySelectorAll('.committee-score').forEach(input => {
+        const paramId = input.name.replace('committee_score_', '');
+        // Update the corresponding hidden input value
+        document.getElementById(`hidden_committee_score_${paramId}`).value = input.value;
+    });
+});
+
+        function copyScores() {
+            const selfScores = document.querySelectorAll('td:nth-child(4)');
+            const committeeInputs = document.querySelectorAll('.committee-score');
+            const checkbox = document.getElementById('approveScoresCheckbox');
+
+            selfScores.forEach((selfScore, index) => {
+                if (checkbox.checked) {
+                    const value = selfScore.textContent.trim();
+                    if (value && !isNaN(value)) {
+                        committeeInputs[index].value = value;
+                    }
+                } else {
+                    committeeInputs[index].value = '';
+                }
+                recalculateTotal();
+            });
+        }
+
+        function validateCommitteeScore(input) {
+            var maxScore = parseInt(input.max, 10);
+            var value = parseInt(input.value, 10);
+
+            if (isNaN(value) || value > maxScore) {
+                alert(`The committee score cannot exceed the max score ${maxScore}`);
+                input.value = ''; // Reset the input field
+            } else {
+                input.setCustomValidity('');
+                input.style.borderColor = ""; // Reset the box color
+            }
+
+            recalculateTotal();
+        }
+
+        function recalculateTotal() {
+            var inputs = document.querySelectorAll('.committee-score');
+            var total = 0;
+            var totalMaxMarks = <%= totalMaxMarks %>;
+
+            inputs.forEach(input => {
+                total += parseInt(input.value, 10) || 0;
+            });
+
+            document.getElementById('totalCommitteeScore').innerText = total;
+
+            // Check if the total committee score exceeds the max score
+            if (total > totalMaxMarks) {
+                alert(`The total committee score (${total}) cannot exceed the total max marks (${totalMaxMarks})`);
+            }
+        }
+
+        // Initialize the total on page load
+        window.onload = recalculateTotal;
+    </script>
+</body>
+</html>

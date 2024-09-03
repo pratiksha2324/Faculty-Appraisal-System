@@ -1,0 +1,146 @@
+<%- include("nav")%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adding Parameters Form</title>
+    <style>
+        /* Existing CSS styles */
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 80px auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        select, input[type="text"], input[type="number"], button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 96%;
+        }
+        button {
+            margin-top: 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #3a6073, #3a7bd5);
+        }
+        /* Message styles */
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .error-message {
+            color: red;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .radio-group {
+            margin-bottom: 15px;
+        }
+        .radio-group label {
+            display: inline-block;
+            margin-right: 15px;
+        }
+    </style>
+    <script>
+        function validateForm() {
+            const parameter = document.getElementById("parameter").value;
+            const totalMarks = document.getElementById("totalMarks").value;
+            const required = document.querySelector('input[name="param_type"]:checked').value;
+
+            if (parameter.trim() === "") {
+                alert("Parameter is required!");
+                return false;
+            }
+
+            if (required === "required" && (isNaN(totalMarks) || totalMarks <= 0)) {
+                alert("Total Marks must be a positive number!");
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h2>CRITERIA SELECTION FORM</h2>
+
+    <!-- Display Success or Error Messages Here -->
+    <% if (successMessage) { %>
+        <div class="success-message"><%= successMessage %></div>
+    <% } %>
+    <% if (errorMessage) { %>
+        <div class="error-message"><%= errorMessage %></div>
+    <% } %>
+
+    <!-- Form -->
+    <form id="criteriaForm" action="/committee/addParams" method="post" onsubmit="return validateForm();">
+        <label for="criteria">Select Criteria:</label>
+        <select id="criteriaSelect" name="criteria_name">
+            <% data.forEach(course => { %>
+                <option value="<%= course.criteria_description %>"><%= course.criteria_description %></option>
+            <% }); %>
+        </select>
+    
+        <label for="parameter">Parameter:</label>
+        <input type="text" id="parameter" name="parameter" required>
+    
+        <label>Parameter Type:</label>
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="param_type" value="required" checked> Required
+            </label>
+            <label>
+                <input type="radio" name="param_type" value="optional"> Optional
+            </label>
+        </div>
+    
+        <label for="totalMarks">Total Marks:</label>
+        <input type="number" id="totalMarks" name="totalMarks">
+    
+        <button type="submit">Submit</button>
+    </form>
+    
+</div>
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+<%- include("nav")  %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criteria Status</title>
+    <style>
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            color: #3c763d;
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+        }
+
+        h1 {
+            color: white;
+        }
+
+        body {
+            background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 80px;
+            height: 100vh;
+        }
+
+        .container-main {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 85%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: black;
+        }
+
+        td {
+            color: white;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-view {
+            background-color: #4CAF50;
+        }
+
+        .btn-edit {
+            background-color: #008CBA;
+        }
+
+        .btn-submit {
+            background-color: #f44336; /* Red color */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-submit:hover {
+            background-color: #d32f2f; /* Darker red color */
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .alert-success {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: #3c763d;
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+            display: none; /* Initially hidden */
+        }
+
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .modal-content p {
+            color: black;
+        }
+
+        .btn-exit {
+            background-color: #f44336;
+        }
+
+        .btn-continue {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="alert alert-success"></div>
+    
+    <div class="container-main">
+        <div class="container">
+            <h1>Criteria Status</h1>
+            <p>User ID: <%= userId %></p>
+            
+            <table id="criteriaTable">
+                <thead>
+                    <tr>
+                        <th>Criteria Number</th>
+                        <th>Criteria Name</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (data && data.length === 0) { %>
+                        <tr>
+                            <td colspan="4">No criteria available</td>
+                        </tr>
+                    <% } else { %>
+                        <% data.forEach(row => { %>
+                            <tr>
+                                <td><%= row['Criteria Number'] %></td>
+                                <td><%= row['Criteria Name'] %></td>
+                                <td><%= row['Self-Appraisal Status'] %></td>
+                                <td>
+                                    <% if (row['Self-Appraisal Status'] === 'Not Applied') { %>
+                                        <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'apply')">Apply</button>
+                                    <% } else if (row['Self-Appraisal Status'] === 'Applied') { %>
+                                        <% if (row['Committee Status'] === 'Reviewed') { %>
+                                            <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'view')">View</button>
+                                        <% } else { %>
+                                            <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'view')">View</button>
+                                            <button class="btn btn-edit" onclick="handleAction('<%= row['Criteria Number'] %>', 'edit')">Edit</button>
+                                        <% } %>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+            </table>
+
+            <!-- Submit Button -->
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-submit" onclick="submitForm()">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Warning Message -->
+    <div id="warningModal" class="modal">
+        <div class="modal-content">
+            <p>Warning: Not all criteria are applied. Do you want to continue?</p>
+            <button class="btn btn-continue" onclick="continueSubmission()">Continue</button>
+            <button class="btn btn-exit" onclick="closeModal()">Exit</button>
+        </div>
+    </div>
+
+    <script>
+        function submitForm() {
+            var rows = document.querySelectorAll("#criteriaTable tbody tr");
+            var allApplied = true;
+
+            rows.forEach(function(row) {
+                var status = row.cells[2].innerText.trim();
+                if (status === "Not Applied") {
+                    allApplied = false;
+                }
+            });
+
+            if (allApplied) {
+                // Submit form or perform action when all are applied
+                alert('Form submitted successfully!');
+            } else {
+                // Show warning modal if not all criteria are applied
+                document.getElementById('warningModal').style.display = 'flex';
+            }
+        }
+
+        function handleAction(criteriaId, action) {
+            if (action === 'apply') {
+                window.location.href = `/faculty/apply?criteriaId=${criteriaId}`;
+            } else if (action === 'view') {
+                window.location.href = `/faculty/view?criteriaId=${criteriaId}`;
+            } else if (action === 'edit') {
+                window.location.href = `/faculty/edit?criteriaId=${criteriaId}`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('warningModal').style.display = 'none';
+        }
+
+        function continueSubmission() {
+            // Logic to proceed even if not all criteria are applied
+            closeModal();
+            alert('Continuing with submission despite warnings.');
+            // Here you can proceed with the submission or any other action
+        }
+
+        <% if (successMsg && successMsg.length > 0) { %>
+            var toast = document.createElement("div");
+            toast.className = "alert alert-success";
+            toast.style.position = "fixed";
+            toast.style.bottom = "20px";
+            toast.style.right = "20px";
+            toast.style.zIndex = "9999";
+            toast.style.display = "block"; // Make the toast visible
+            toast.textContent = "<%= successMsg %>";
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                document.body.removeChild(toast);
+            }, 3000); // Remove toast after 3 seconds
+        <% } %>
+    </script>
+</body>
+</html>

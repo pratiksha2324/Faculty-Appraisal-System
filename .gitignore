@@ -1,1 +1,5 @@
 node_modules
+.env
+main.py
+cypress
+test.py

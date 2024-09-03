@@ -193,7 +193,7 @@ export const sendApprovalEmail = async (user) => {
       from: 'your-email@gmail.com',
       to: user.email_id,
       subject: 'Your Account Has Been Approved',
-      text: `Dear ${user.first_name} ${user.last_name},\n\nYour account has been approved. Here are your login credentials:\n\nUsername: ${user.email_id}\nPassword:"Password"\n\nBest regards,\nYour Institution`
+      text: `Dear ${user.first_name} ${user.last_name},\n\nYour account has been approved. Here are your login credentials:\n\nUsername: ${user.email_id}\nPassword:"Misfits"\n\nBest regards,\nYour Institution`
   };
 
   try {

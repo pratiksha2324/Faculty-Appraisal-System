@@ -81,24 +81,89 @@
 .login-container a:hover {
     text-decoration: underline;
 }
+
+.toast {
+            visibility: hidden;
+            max-width: 50%;
+            margin: auto;
+            background-color: #333;
+            text-align: center;
+            border-radius: 2px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            top: 30px;
+            font-size: 17px;
+            transform: translateX(-50%);
+        }
+
+        .toast.show {
+            visibility: visible;
+            -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @-webkit-keyframes fadein {
+            from {top: 0; opacity: 0;} 
+            to {top: 30px; opacity: 1;}
+        }
+
+        @keyframes fadein {
+            from {top: 0; opacity: 0;}
+            to {top: 30px; opacity: 1;}
+        }
+
+        @-webkit-keyframes fadeout {
+            from {top: 30px; opacity: 1;} 
+            to {top: 0; opacity: 0;}
+        }
+
+        @keyframes fadeout {
+            from {top: 30px; opacity: 1;}
+            to {top: 0; opacity: 0;}
+        }
+        .links {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
+    <div id="toast" class="toast"></div>
     <div class="login-container">
-        <form action="/faculty/login" method="post">
-        <h1>Login</h1>
+        <h2>Login</h2>
+       
+        <form action="/faculty/login" method="POST">
+            <label for="uname"><b>Username</b></label>
+            <input type="text" id="uname" name="username" <% if (username) { %> value="<%= username %>" <% } %> required>
 
-        <label for="uname"><b>Username</b></label>
-        <input type="text" placeholder="Enter Username" name="uname" required>
+            <label for="password"><b>Password</b></label>
+            <input type="password" id="password" name="password" required>
+            <div class="links">
+                <a href="/faculty/forgot-password">Forgot Password?</a>
+                <a href="/faculty/register">Register</a>
+            </div>
 
-        <label for="psw"><b>Password</b></label>
-        <input type="password" placeholder="Enter Password" name="password" required>
-
-        <button type="submit">Login</button>
-
-        <a href="forgot-password.html">Forgot password?</a>
-   
+            <button type="submit" name="submit">Login</button>
+        </form>
     </div>
-</form>
+    <script>
+        window.onload = function() {
+            var toast = document.getElementById("toast");
+            <% if (message) { %>
+                toast.innerHTML = "<%= message %>";
+                toast.className = "toast show";
+                setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+            <% } %>
+            <% if (error) { %>
+                toast.innerHTML = "<%= error %>";
+                toast.className = "toast show";
+                setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+            <% } %>
+        }
+    </script>
 </body>
 </html>

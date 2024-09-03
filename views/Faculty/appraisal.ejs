@@ -1,0 +1,78 @@
+<%- include("nav")  %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self Appraisal Form</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Self Appraisal Form</h2>
+    <div id="formContainer"></div>
+    
+    <script>
+        let currentCriteriaIndex = 0;
+        let criteriaList = [];
+        let parametersList = {};
+
+        $(document).ready(function() {
+            fetch('/faculty/get-criteria').then(response => response.json()).then(data => {
+                criteriaList = data.criteria;
+                loadCriteriaForm(currentCriteriaIndex);
+            });
+        });
+
+        function loadCriteriaForm(index) {
+            if (index >= criteriaList.length) {
+                $('#formContainer').html('<h3>All Criteria Submitted</h3>');
+                return;
+            }
+
+            const criteria = criteriaList[index];
+            $('#formContainer').html(`
+                <form id="criteriaForm" method="POST" action="/submit-appraisal" enctype="multipart/form-data">
+                    <h3>${criteria.criteria_description}</h3>
+                    <input type="hidden" name="criteriaId" value="${criteria.criteria_id}" required>
+                    <label for="parameterId">Parameter:</label>
+                    <select id="parameterId" name="parameterId" required></select><br><br>
+                    <label for="marksByEmp">Marks by Employee:</label>
+                    <input type="number" id="marksByEmp" name="marksByEmp" required><br><br>
+                    <label for="documents">Upload Supportive Documents:</label>
+                    <input type="file" id="documents" name="documents" multiple><br><br>
+                    <button type="submit">Submit</button>
+                </form>
+            `);
+
+            fetch(`/faculty/get-parameters/${criteria.criteria_id}`).then(response => response.json()).then(data => {
+                parametersList[criteria.criteria_id] = data.parameters;
+                const parameterSelect = $('#parameterId');
+                parameterSelect.empty();
+                data.parameters.forEach(parameter => {
+                    parameterSelect.append(new Option(parameter.parameter_description, parameter.c_parameter_id));
+                });
+            });
+
+            $('#criteriaForm').on('submit', function(event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+                $.ajax({
+                    url: '/faculty/submit-appraisal',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        currentCriteriaIndex++;
+                        loadCriteriaForm(currentCriteriaIndex);
+                    },
+                    error: function(error) {
+                        console.error('Error submitting data:', error);
+                        alert('Error submitting data');
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

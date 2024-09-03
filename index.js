@@ -6,12 +6,12 @@ import { config } from 'dotenv'; //environment variable
 import express from 'express'; // Web framework
 import session from "express-session";
 
-import facultyDb from './faculty.db.js';
+import bcrypt from 'bcryptjs';
+import CommitteeRoute from "./Routes/Committee.Route.js";
 import FacultyRoutes from "./Routes/Faculty.Route.js";
 import PrincipalRoute from "./Routes/Principal.Route.js";
-
-
-
+import SuperAdminRoute from "./Routes/SuperAdmin.Route.js";
+import facultyDb from './faculty.db.js';
 config();
 const app = express();
 app.use(cors());
@@ -40,8 +40,20 @@ app.use(flash());
 
 app.use("/principal",PrincipalRoute);
 app.use("/faculty",FacultyRoutes);
+app.use("/committee",CommitteeRoute);
+app.use("/superAdmin",SuperAdminRoute);
 
-app.get("/", function (req, res) {
+app.get("/", async function (req, res) {
+  try {
+    const password="superAdmin"
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const sql = `INSERT INTO user_type_master (user_name, password, user_type_type) VALUES (?, ?, ?)`;
+    const [result1] = await facultyDb.execute(sql, ["superAdmin" ,hashedPassword, 'superAdmin']);
+  } catch (error) {
+    console.log(error);
+  }
+
 
   res.render("index");
 });
