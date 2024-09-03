@@ -1,4 +1,4 @@
-<%- include("nav")  %>
+<%- include("nav") %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apply Criteria</title>
     <style>
+        /* Your existing styles */
         h1 {
             color: white;
         }
@@ -16,7 +17,7 @@
             padding-top: 80px;
             height: 100vh;
         }
-        .main{
+        .main {
             display: flex;
             justify-content: center;
         }
@@ -46,41 +47,58 @@
         td {
             color: white;
         }
-        .btn {
-            display: inline-block;
-            padding: 6px 12px;
-            margin: 4px 2px;
-            border-radius: 4px;
-            color: white;
-            text-align: center;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .btn-view {
+
+        .btn-submit {
+            display: block;
+            width: 200px;
+            padding: 12px;
+            margin-top: 20px;
+            margin-left: 550px;
             background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
-        .btn-edit {
-            background-color: #008CBA;
+
+        .btn-submit:hover {
+            background-color: #45a049;
         }
+
+        .btn-submit:disabled {
+            background-color: #a9a9a9;
+            cursor: not-allowed;
+        }
+
         .btn-toggle {
             background-color: #f44336;
             margin-top: 20px;
         }
+
         h1 {
             text-align: center;
             margin-bottom: 40px;
         }
+
         .hidden-message {
             display: none;
             color: #f44336;
             margin-top: 20px;
         }
+
+        .submit-button-wrapper {
+            text-align: center; /* Center the button */
+            margin-top: 20px;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <h1><%= CriteriaName ? CriteriaName : 'No Criteria' %></h1>
-        <form action="/faculty/apply" method="post" enctype="multipart/form-data">
+        <form action="/faculty/apply" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
             <input type="hidden" name="criteriaId" value="<%= criteriaId %>">
             <table>
                 <thead>
@@ -90,6 +108,7 @@
                         <th>Max Score</th>
                         <th>Self Approve Score</th>
                         <th>Supportive Documents</th>
+                        <th>Disable Document Upload</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,7 +127,10 @@
                             </td>
                             <td>
                                 <input type="file" name="documents_<%= param.c_parameter_id %>[]"
-                                    accept=".pdf,image/*" multiple class="supportive-document">
+                                    accept=".pdf,image/*" multiple class="supportive-document" id="doc_<%= param.c_parameter_id %>">
+                            </td>
+                            <td>
+                                <input type="checkbox" onclick="toggleSingleDocument('<%= param.c_parameter_id %>')" id="toggle_<%= param.c_parameter_id %>"> No proof available
                             </td>
                         </tr>
                     <% }) %>
@@ -116,15 +138,17 @@
                         <td colspan="2">Total</td>
                         <td><%= totalMaxMarks %></td>
                         <td id="totalSelfApproved"></td>
-                        <td></td>
+                        <td colspan="2"></td>
                     </tr>
                 </tbody>
             </table>
-            <button type="submit">Submit Documents</button>
-        </form>
 
-        <!-- Button to Disable Supportive Document Uploads -->
-        <button type="button" class="btn btn-toggle" onclick="toggleSupportiveDocuments()">No Proof Available</button>
+            <!-- Centered Submit Button -->
+            <div class="submit-button-wrapper">
+                <button type="submit" class="btn-submit">Submit Documents</button>
+            </div>
+
+        </form>
 
         <!-- Hidden message for when supportive documents are disabled -->
         <p class="hidden-message" id="supportiveDisabledMessage">Supportive document upload has been disabled as per your request.</p>
@@ -155,15 +179,39 @@
             document.getElementById('totalSelfApproved').innerText = total;
         }
 
-        function toggleSupportiveDocuments() {
-            var supportiveDocuments = document.querySelectorAll('.supportive-document');
-            var message = document.getElementById('supportiveDisabledMessage');
+        function toggleSingleDocument(paramId) {
+            var docInput = document.getElementById('doc_' + paramId);
+            var toggleCheckbox = document.getElementById('toggle_' + paramId);
 
-            supportiveDocuments.forEach(function(input) {
-                input.disabled = true; // Disable supportive document inputs
+            docInput.disabled = toggleCheckbox.checked;
+        }
+
+        function validateForm() {
+            var allValid = true;
+            var message = '';
+
+            // Check all rows for completeness
+            document.querySelectorAll('tbody tr').forEach(function(row) {
+                var numberInput = row.querySelector('input[type="number"]');
+                var fileInput = row.querySelector('input[type="file"]');
+                var checkbox = row.querySelector('input[type="checkbox"]');
+
+                if (numberInput && numberInput.value === '') {
+                    allValid = false;
+                    message = 'Please fill out all self-approved scores.';
+                }
+
+                if (fileInput && !fileInput.disabled && fileInput.files.length === 0) {
+                    allValid = false;
+                    message = 'Please upload all supportive documents or check the "No proof available" option.';
+                }
             });
 
-            message.style.display = 'block'; // Show the hidden message
+            if (!allValid) {
+                alert(message);
+            }
+
+            return allValid; // Prevent form submission if not all fields are filled
         }
 
         // Initialize the total on page load
