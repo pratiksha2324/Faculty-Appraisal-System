@@ -388,3 +388,5 @@ insert into institution_master (institution_name,location) values ("Fergusson Co
 insert into department_master (department_name,institution_id) values ("CS","INS1");
 insert into user_type_master (user_name,password,user_type_type) values ("apurva3barthwal@gmail.com","password","admin");
 insert into user_master(institution_id,dept_id,user_type_id) values ("INS1","DEPT1","USERTY1");
+ALTER TABLE self_appraisal_score_master
+ADD COLUMN supportive_document ENUM('proof', 'no proof') DEFAULT 'proof';

@@ -107,18 +107,15 @@ router.get("/home", async (req, res) => {
 router.use(authorizeRole('committee'));
 
 router.get("/reports", async (req, res) => {
-    
+    const institution_id = req.user.institution_id;
+    console.log("institution_id", institution_id);
 
-        const institution_id = req.user.institution_id;
-        console.log("institution_id", institution_id);
-    
-    
-            try {
-                const query = `
-                SELECT
+    try {
+        const query = `
+            SELECT
                 u.user_id,
                 u.email_id,
-                u.emp_id, -- Added emp_id to the SELECT clause
+                u.emp_id,
                 CONCAT(u.first_name, ' ', u.last_name) AS name,
                 d.department_name,
                 COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
@@ -156,26 +153,28 @@ router.get("/reports", async (req, res) => {
                 ) total_criteria
             WHERE
                 u.institution_id = ?
+                AND EXISTS (
+                    SELECT 1 FROM self_appraisal_score_master sa 
+                    WHERE sa.user_id = u.user_id AND sa.status = 'active'
+                )
             GROUP BY
                 u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, total_criteria.total, u.email_id
-            
         `;
         
-                const [rows] = await facultyDb.query(query, [institution_id]);
-                if (rows.length === 0) {
-                    res.render("./Committee/report", { employees: [], error: "No data found." });
-                    return;
-                }
-                console.log(rows);
-
-    
-            res.render("./Committee/report", { employees: rows });
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Server Error");
+        const [rows] = await facultyDb.query(query, [institution_id]);
+        if (rows.length === 0) {
+            res.render("./Committee/report", { employees: [], error: "No data found." });
+            return;
         }
-    });
-    
+        console.log(rows);
+
+        res.render("./Committee/report", { employees: rows });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
+
     
 router.get('/criteria-Status', async (req, res) => {
         console.log("criteria-status");

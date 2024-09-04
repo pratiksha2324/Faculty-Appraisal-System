@@ -14,8 +14,12 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding-top: 80px;
+            
+        }
+        .main{
             display: flex;
             justify-content: center;
+            align-items: center;
             height: 100vh;
         }
         .container {
@@ -67,6 +71,7 @@
     </style>
 </head>
 <body>
+    <div class="main">
     <div class="container">
         <h1><%= criteriaName ? criteriaName : 'No Criteria' %></h1>
         <table>
@@ -114,5 +119,6 @@
             </tbody>
         </table>
     </div>
+</div>
 </body>
 </html>

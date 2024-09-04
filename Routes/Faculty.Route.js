@@ -340,7 +340,6 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-
 router.get('/criteria-status', async (req, res) => {
     console.log("criteria-status");
     const successMsg = req.query.successMsg || "";
@@ -361,9 +360,9 @@ router.get('/criteria-status', async (req, res) => {
         }
 
         const userId = result[0][0].user_id;
-        console.log('User IDaa:', userId);
+        console.log('User ID:', userId);
 
-        // SQL query to get criteria status and actions
+        // SQL query to get criteria status and actions without checking self_appraisal_score status
         const query2 = `
             SELECT
                 c.criteria_id AS 'Criteria Number',
@@ -380,7 +379,7 @@ router.get('/criteria-status', async (req, res) => {
             LEFT JOIN c_parameter_master p
                 ON c.criteria_id = p.criteria_id
             LEFT JOIN self_appraisal_score_master sas
-                ON p.c_parameter_id = sas.c_parameter_id AND sas.user_id = ? AND sas.status = 'active'
+                ON p.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
             LEFT JOIN committee_master cm
                 ON p.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee = ? AND cm.status = 'active'
             WHERE c.status = 'active'
@@ -389,14 +388,14 @@ router.get('/criteria-status', async (req, res) => {
 
         // Execute the query with the user ID
         const results2 = await facultyDb.query(query2, [userId, userId]);
-        console.log('Criteria Results21:', results2[0]);
+        console.log('Criteria Results:', results2[0]);
 
         if (results2.length === 0) {
             console.log('No criteria data found');
         }
 
         // Render the results in the view
-        res.render('./Faculty/criteria-status', { userId, data: results2[0] ,successMsg});
+        res.render('./Faculty/criteria-status', { userId, data: results2[0], successMsg });
 
     } catch (err) {
         console.error(err);
@@ -430,20 +429,21 @@ router.post("/apply", upload.any(), async (req, res) => {
             if (param.startsWith('self_approved_')) {
                 const paramId = param.replace('self_approved_', '');
                 const marks = parseInt(req.body[param], 10);
+                const noProof = req.body[`no_proof_${paramId}`] ? 'no proof' : 'proof'; // Check if 'no proof' is checked
                 if (!isNaN(marks)) {
-                    marksData.push([userId, marks, paramId, 'active']);
+                    marksData.push([userId, marks, paramId, 'inactive', noProof]);
                 }
             }
         }
 
         // Insert self-approved marks one by one
         for (const mark of marksData) {
-            await facultyDb.query('INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status) VALUES (?, ?, ?, ?)', mark);
+            await facultyDb.query('INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status, supportive_document) VALUES (?, ?, ?, ?, ?)', mark);
         }
 
         // Prepare data for document_master
         req.files.forEach(file => {
-            const paramIdMatch = file.fieldname.replace(/^public\//, '').match(/^documents_(C_PARA\d+)\[\]$/);
+            const paramIdMatch = file.fieldname.match(/^documents_(C_PARA\d+)\[\]$/);
             const paramId = paramIdMatch ? paramIdMatch[1] : null;
             if (paramId) {
                 const docPath = file.path.replace(/\\/g, '/').replace(/^public\//, '');
@@ -532,7 +532,7 @@ router.get('/view', async (req, res) => {
         const criteriaName = parameters[0][0].criteriaName;
 
         // Render EJS template
-        res.render('faculty/edit', { parameters: parameters[0], documents: documents[0], criteriaId, criteriaName });
+        res.render('faculty/view', { parameters: parameters[0], documents: documents[0], criteriaId, criteriaName });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
@@ -540,7 +540,120 @@ router.get('/view', async (req, res) => {
 });
 
 
+router.get('/edit', async (req, res) => {
+    const userTypeId = req.user.user_id;
+    const { criteriaId } = req.query;
+   
+    try {
+        const [userResults] = await facultyDb.query('SELECT user_id FROM user_master WHERE user_type_id = ?', [userTypeId]);
+        
+        if (userResults.length === 0) {
+            return res.status(404).send('User not found');
+        }
 
+        const userId = userResults[0].user_id;
+        const criteriaQuery = `
+        SELECT c.criteria_description AS 'criteriaName', cp.*, sas.marks_by_emp, COALESCE(cm.comm_score, 'Pending') AS committeeScore
+        FROM criteria_master c
+        JOIN c_parameter_master cp ON c.criteria_id = cp.criteria_id
+        LEFT JOIN self_appraisal_score_master sas ON cp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
+        LEFT JOIN committee_master cm ON sas.record_id = cm.record_id
+        WHERE c.criteria_id = ?
+    `;
+        const parameters = await facultyDb.query(criteriaQuery, [userId, criteriaId]);
+
+        // Fetch documents uploaded by the logged-in faculty
+        const documentQuery = `
+            SELECT d.document_id, d.doc_link AS document_path, d.c_parameter_id
+            FROM document_master d
+            JOIN c_parameter_master cp ON d.c_parameter_id = cp.c_parameter_id
+            WHERE cp.criteria_id = ? AND d.user_id = ?
+        `;
+        const documents = await facultyDb.query(documentQuery, [criteriaId, userId]);
+
+        const criteriaName = parameters[0][0].criteriaName;
+
+        // Render EJS template
+        res.render('faculty/edit', { parameters: parameters[0], documents: documents[0], criteriaId, criteriaName });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+router.post('/submit-criteria-status', async (req, res) => {
+    if (!req.user) {
+        return res.status(401).send('Access denied. No token provided.');
+    }
+
+    const userTypeId =req.user.user_id;
+
+    try {
+        // Fetch user ID based on userTypeId
+        const [userResults] = await facultyDb.query('SELECT user_id FROM user_master WHERE user_type_id = ?', [userTypeId]);
+
+        if (userResults.length === 0) {
+            return res.status(404).send('User not found');
+        }
+
+        const userId = userResults[0].user_id;
+        const criteriaStatusData = req.body.criteriaStatusData; // Assuming this is an array of criteria status data
+        const marksData = [];
+
+        // Process criteria statuses
+        for (const criteria of criteriaStatusData) {
+            const criteriaId = criteria.criteriaId;
+            const status = criteria.status;
+
+            if (status === 'Applied') {
+                // Update status for parameter in self_appraisal to 'active'
+                await facultyDb.query(
+                    'UPDATE self_appraisal_score_master SET status = ? WHERE user_id = ? AND status="inactive"',
+                    ['active', userId]
+                );
+                console.log(`Updated status for criteria ${criteriaId} to 'active'`);
+            } else if (status === 'Not Applied') {
+                // Get all parameter IDs for the criteria
+                const [parameterResults] = await facultyDb.query(
+                    'SELECT c_parameter_id FROM c_parameter_master WHERE criteria_id = ?',
+                    [criteriaId]
+                );
+
+                if (parameterResults.length === 0) {
+                    console.log(`No parameters found for criteria ${criteriaId}`);
+                    continue; // Skip if no parameters are found
+                }
+
+                // Prepare data to insert
+                for (const parameter of parameterResults) {
+                    const parameterId = parameter.c_parameter_id;
+                    marksData.push([userId, 0, parameterId, 'active', 'no proof']);
+                    console.log(`Prepared marks data: [userId: ${userId}, marks_by_emp: 0, c_parameter_id: ${parameterId}, status: 'active', supportive_document: 'no proof']`);
+                }
+            }
+        }
+
+        // Insert marks data for 'Not Applied' criteria
+        for (const mark of marksData) {
+            await facultyDb.query(
+                'INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status, supportive_document) VALUES (?, ?, ?, ?, ?)',
+                mark
+            );
+            console.log(`Inserted Marks Data: ${mark}`);
+        }
+
+        const successMsg = 'Criteria status submitted successfully';
+        res.json({
+        success: true,
+        message: 'Data processed successfully'
+    });
+
+        
+    } catch (error) {
+        console.error('Error processing request:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 
 

@@ -96,6 +96,7 @@
     </style>
 </head>
 <body>
+    <div class="main">
     <div class="container">
         <h1><%= CriteriaName ? CriteriaName : 'No Criteria' %></h1>
         <form action="/faculty/apply" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
@@ -129,9 +130,12 @@
                                 <input type="file" name="documents_<%= param.c_parameter_id %>[]"
                                     accept=".pdf,image/*" multiple class="supportive-document" id="doc_<%= param.c_parameter_id %>">
                             </td>
+                            
                             <td>
-                                <input type="checkbox" onclick="toggleSingleDocument('<%= param.c_parameter_id %>')" id="toggle_<%= param.c_parameter_id %>"> No proof available
+                                <input type="checkbox" name="no_proof_<%= param.c_parameter_id %>" onclick="toggleSingleDocument('<%= param.c_parameter_id %>')" id="toggle_<%= param.c_parameter_id %>"> No proof available
                             </td>
+
+
                         </tr>
                     <% }) %>
                     <tr>
@@ -153,7 +157,7 @@
         <!-- Hidden message for when supportive documents are disabled -->
         <p class="hidden-message" id="supportiveDisabledMessage">Supportive document upload has been disabled as per your request.</p>
     </div>
-
+</div>
     <script>
         function validateInput(input) {
             var maxScore = parseInt(input.max);

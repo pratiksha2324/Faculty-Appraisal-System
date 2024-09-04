@@ -218,6 +218,54 @@
     </div>
 
     <script>
+    function submitFormToBack() {
+    var rows = document.querySelectorAll("#criteriaTable tbody tr");
+    var criteriaStatusData = [];
+
+    rows.forEach(function(row) {
+        var criteriaId = row.cells[0].innerText.trim();
+        var status = row.cells[2].innerText.trim();
+        criteriaStatusData.push({ criteriaId, status });
+    });
+
+    fetch('/faculty/submit-criteria-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ criteriaStatusData })
+    })
+    .then(response => {
+        // Log the response to debug
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+
+        // Check if the response is JSON
+        const contentType = response.headers.get('Content-Type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            return response.text().then(text => {
+                throw new Error(`Expected JSON but received ${contentType}: ${text}`);
+            });
+        }
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            alert('Form submitted successfully!');
+            location.reload(); // Trigger page reload
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An unexpected error occurred: ' + error.message);
+    });
+}
+
+
         function submitForm() {
             var rows = document.querySelectorAll("#criteriaTable tbody tr");
             var allApplied = true;
@@ -231,6 +279,7 @@
 
             if (allApplied) {
                 // Submit form or perform action when all are applied
+                submitFormToBack()
                 alert('Form submitted successfully!');
             } else {
                 // Show warning modal if not all criteria are applied
@@ -256,6 +305,8 @@
             // Logic to proceed even if not all criteria are applied
             closeModal();
             alert('Continuing with submission despite warnings.');
+            
+            submitFormToBack()
             // Here you can proceed with the submission or any other action
         }
 
@@ -273,6 +324,8 @@
                 document.body.removeChild(toast);
             }, 3000); // Remove toast after 3 seconds
         <% } %>
+
     </script>
 </body>
 </html>
+
